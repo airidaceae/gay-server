@@ -1,11 +1,9 @@
 use std::{
     net::{TcpListener, TcpStream},
-    io::{Read, Write, BufRead, BufReader}
+    io::{Write, BufRead, BufReader, BufWriter},
+    str::FromStr,
 };
-use std::io::BufWriter;
-use std::str::FromStr;
 use strum_macros::EnumString;
-use strum;
 
 #[derive(Debug, EnumString)]
 enum HttpRequestType {
@@ -35,8 +33,8 @@ fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     // Immediately read the first line instead of waiting
     // for the EOF when the connection times out on its own.
     let mut request = String::new();
-    stream_read.read_line(&mut request);
-    let mut request = request.to_string();
+    stream_read.read_line(&mut request)?;
+    let request = request.to_string();
 
     let request: HttpRequest = {
         // Create a vec for the 3 fields in the first line of the HTTP request header
@@ -57,7 +55,7 @@ fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     println!("{:#?}", request);
 
     // Return a basic response. Nothing crazy for now, just making sure it all works.
-    stream_write.write_all("HTTP/1.1 418 Teapot Joke Goes Here\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Length: 6\r\n\r\nhai :3\r\n\r\n".as_bytes());
+    stream_write.write_all("HTTP/1.1 418 Teapot Joke Goes Here\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Length: 6\r\n\r\nhai :3\r\n\r\n".as_bytes())?;
 
     Ok(())
 }
