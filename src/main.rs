@@ -1,9 +1,8 @@
 use std::{
     net::{TcpListener, TcpStream},
-    io::{Read, Write, BufRead, BufReader}
+    io::{Read, Write, BufRead, BufReader, BufWriter},
+    str::FromStr,
 };
-use std::io::BufWriter;
-use std::str::FromStr;
 use strum_macros::EnumString;
 use strum;
 
