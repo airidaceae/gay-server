@@ -3,7 +3,7 @@ use std::{
     io::{Write, BufRead, BufReader, BufWriter},
     str::FromStr,
 };
-use strum_macros::EnumString;
+use strum_macros::{EnumString};
 
 #[derive(Debug, EnumString)]
 enum HttpRequestType {
@@ -24,6 +24,30 @@ struct HttpRequest {
     req_type: HttpRequestType,
     resource: String,
     version: String
+}
+
+#[derive(Debug)]
+struct HttpResponse {
+    version: String,
+    status_code: u32,
+    status_text: String,
+    headers: Vec<String>,
+    content_length: u32,
+    body: String,
+}
+
+impl HttpResponse {
+    fn to_string(&self) -> String {
+        return format!(
+            "{} {} {}\r\n{}{}\r\n\r\n{}\r\n\r\n",
+            self.version,
+            self.status_code,
+            self.status_text,
+            self.headers.join("\r\n"),
+            self.content_length,
+            self.body
+        )
+    }
 }
 
 fn handle_client(stream: TcpStream) -> std::io::Result<()>{
@@ -55,7 +79,15 @@ fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     println!("{:#?}", request);
 
     // Return a basic response. Nothing crazy for now, just making sure it all works.
-    stream_write.write_all("HTTP/1.1 418 Teapot Joke Goes Here\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Length: 6\r\n\r\nhai :3\r\n\r\n".as_bytes())?;
+    let response = HttpResponse {
+        version: "HTTP/1.1".to_string(),
+        status_code: 418,
+        status_text: "Teapot Joke Goes Here".to_string(),
+        headers: vec!["Content-Type: text/plain; charset=UTF-8".to_string()],
+        content_length: 6,
+        body: "hai :3".to_string(),
+    };
+    stream_write.write_all(response.to_string().as_bytes())?;
 
     Ok(())
 }
