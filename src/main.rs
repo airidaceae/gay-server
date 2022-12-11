@@ -1,7 +1,12 @@
-use std::{net::{TcpListener, TcpStream}, io::{Read, Write}};
-use std::io::{BufRead, BufReader};
+use std::{
+    net::{TcpListener, TcpStream},
+    io::{Read, Write, BufRead, BufReader}
+};
+use std::str::FromStr;
+use strum_macros::EnumString;
+use strum;
 
-#[derive(Debug)]
+#[derive(Debug, EnumString)]
 enum HttpRequestType {
     GET,
     POST,
@@ -17,7 +22,7 @@ enum HttpRequestType {
 
 #[derive(Debug)]
 struct HttpRequest {
-    req_type: Option<HttpRequestType>,
+    req_type: HttpRequestType,
     resource: String,
     version: String
 }
@@ -34,19 +39,16 @@ fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     let mut request = request.to_string();
 
     let request: HttpRequest = {
-        let request = request.split(' ').take(3).map(|x| x.trim()).collect::<Vec<&str>>();
-        HttpRequest { req_type: Option::from(match request[0] {
-            "GET" => HttpRequestType::GET,
-            "POST" => HttpRequestType::POST,
-            "PUT" => HttpRequestType::PUT,
-            "HEAD" => HttpRequestType::HEAD,
-            "DELETE" => HttpRequestType::DELETE,
-            "PATCH" => HttpRequestType::PATCH,
-            "OPTIONS" => HttpRequestType::OPTIONS,
-            "CONNECT" => HttpRequestType::CONNECT,
-            "TRACE" => HttpRequestType::TRACE,
-            _ => HttpRequestType::UNKNOWN
-        }), resource: request[1].to_string(), version: request[2].to_string() }
+        let request = request
+            .split(' ')
+            .take(3)
+            .map(|x| x.trim())
+            .collect::<Vec<&str>>();
+        HttpRequest {
+            req_type: HttpRequestType::from_str(request[0]).unwrap_or(HttpRequestType::UNKNOWN),
+            resource: request[1].to_string(),
+            version: request[2].to_string()
+        }
     };
 
     println!("{:#?}", request);
