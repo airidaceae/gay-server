@@ -2,6 +2,7 @@ use std::{
     net::{TcpListener, TcpStream},
     io::{Read, Write, BufRead, BufReader}
 };
+use std::io::BufWriter;
 use std::str::FromStr;
 use strum_macros::EnumString;
 use strum;
@@ -28,14 +29,12 @@ struct HttpRequest {
 }
 
 fn handle_client(stream: TcpStream) -> std::io::Result<()>{
-    let mut stream = BufReader::new(stream);
-
-    let mut request = String::new();
+    let mut stream_read = BufReader::new(&stream);
 
     // Immediately read first line instead of waiting for the connection to
     // close and send EOF
-    stream.read_line(&mut request);
-
+    let mut request = String::new();
+    stream_read.read_line(&mut request);
     let mut request = request.to_string();
 
     let request: HttpRequest = {
@@ -53,6 +52,9 @@ fn handle_client(stream: TcpStream) -> std::io::Result<()>{
 
     println!("{:#?}", request);
 
+    let mut stream_write = BufWriter::new(&stream);
+
+    stream_write.write_all("HTTP/1.1 418 Teapot Joke Goes Here\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Length: 6\r\n\r\nhai :3\r\n\r\n".as_bytes());
     Ok(())
 }
 
