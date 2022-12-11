@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 use strum_macros::{EnumString};
+use async_std::task::{spawn};
 
 #[derive(Debug, EnumString)]
 enum HttpRequestType {
@@ -50,7 +51,7 @@ impl HttpResponse {
     }
 }
 
-fn handle_client(stream: TcpStream) -> std::io::Result<()>{
+async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     let mut stream_read = BufReader::new(&stream);
     let mut stream_write = BufWriter::new(&stream);
 
@@ -92,12 +93,12 @@ fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     Ok(())
 }
 
-
-fn main() -> std::io::Result<()> {
+#[async_std::main]
+async fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:6969")?;
 
-    for stream in listener.incoming(){
-        handle_client(stream?)?;
+    for stream in listener.incoming() {
+        spawn(handle_client(stream?));
     }
     Ok(())
 }
