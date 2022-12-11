@@ -1,17 +1,56 @@
 use std::{net::{TcpListener, TcpStream}, io::{Read, Write}};
-use std::io::BufReader;
+use std::io::{BufRead, BufReader};
+
+#[derive(Debug)]
+enum HttpRequestType {
+    GET,
+    POST,
+    PUT,
+    HEAD,
+    DELETE,
+    PATCH,
+    OPTIONS,
+    CONNECT,
+    TRACE,
+    UNKNOWN
+}
+
+#[derive(Debug)]
+struct HttpRequest {
+    req_type: Option<HttpRequestType>,
+    resource: String,
+    version: String
+}
 
 fn handle_client(stream: TcpStream) -> std::io::Result<()>{
-    let mut buf:Vec<u8> = vec![0; 512];
-    let mut tcp_data = BufReader::new(stream.try_clone().unwrap());
-    tcp_data.read_to_end(&mut buf)?;
-    let request = String::from_utf8(buf).unwrap();
-    eprintln!("{request}");
+    let mut stream = BufReader::new(stream);
 
-    //fix this to make sure that [1] exists before getting it
-    let path: &str = request.split(' ').collect::<Vec<&str>>()[1];
-    eprintln!("{path}");
-    
+    let mut request = String::new();
+
+    // Immediately read first line instead of waiting for the connection to
+    // close and send EOF
+    stream.read_line(&mut request);
+
+    let mut request = request.to_string();
+
+    let request: HttpRequest = {
+        let request = request.split(' ').take(3).map(|x| x.trim()).collect::<Vec<&str>>();
+        HttpRequest { req_type: Option::from(match request[0] {
+            "GET" => HttpRequestType::GET,
+            "POST" => HttpRequestType::POST,
+            "PUT" => HttpRequestType::PUT,
+            "HEAD" => HttpRequestType::HEAD,
+            "DELETE" => HttpRequestType::DELETE,
+            "PATCH" => HttpRequestType::PATCH,
+            "OPTIONS" => HttpRequestType::OPTIONS,
+            "CONNECT" => HttpRequestType::CONNECT,
+            "TRACE" => HttpRequestType::TRACE,
+            _ => HttpRequestType::UNKNOWN
+        }), resource: request[1].to_string(), version: request[2].to_string() }
+    };
+
+    println!("{:#?}", request);
+
     Ok(())
 }
 
