@@ -3,6 +3,8 @@ use std::{
     io::{Write, BufRead, BufReader, BufWriter},
     str::FromStr,
 };
+use std::fs::File;
+use std::io::Read;
 use strum_macros::{EnumString};
 use async_std::task::{spawn};
 
@@ -80,13 +82,16 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     println!("{:#?}", request);
 
     // Return a basic response. Nothing crazy for now, just making sure it all works.
+    let mut page = String::new();
+    let length = File::open("assets/index.html")?.read_to_string(&mut page)?;
+    println!("{}", page);
     let response = HttpResponse {
         version: "HTTP/1.1".to_string(),
-        status_code: 418,
-        status_text: "Teapot Joke Goes Here".to_string(),
-        headers: vec!["Content-Type: text/plain; charset=UTF-8".to_string()],
-        content_length: 6,
-        body: "hai :3".to_string(),
+        status_code: 200,
+        status_text: "Success".to_string(),
+        headers: vec!["Content-Type: text/html; charset=UTF-8".to_string()],
+        content_length: length as u32,
+        body: page
     };
     stream_write.write_all(response.to_string().as_bytes())?;
 
