@@ -51,7 +51,6 @@ impl HttpResponse {
             ).as_bytes(),
             &*self.body, b"\r\n\r\n"
         ].concat();
-
     }
 
     // Returns self formatted as an HTTP response, excluding binary data.
