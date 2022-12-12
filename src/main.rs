@@ -104,7 +104,6 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
             // Don't allow path traversal exploits
             .components()
             .filter(|&x| x != Component::ParentDir && x != Component::RootDir)
-            .tap_dbg(|x| eprintln!("Iterator structure: {:#?}", x))
             .collect::<PathBuf>()
             .tap_dbg(|x| eprintln!("Resolved path: {:?}", x));
 
