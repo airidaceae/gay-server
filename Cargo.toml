@@ -9,3 +9,6 @@ edition = "2021"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 async-std = { version = "1.12.0", features = ["attributes"] }
+tap = "1.0.1"
+simdutf8 = "0.1.4"
+mime_guess = "2.0.4"

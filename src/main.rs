@@ -1,12 +1,14 @@
 use std::{
     net::{TcpListener, TcpStream},
-    io::{Write, BufRead, BufReader, BufWriter},
+    io::{Read, Write, BufRead, BufReader, BufWriter},
     str::FromStr,
+    fs::File,
 };
-use std::fs::File;
-use std::io::Read;
 use strum_macros::{EnumString};
 use async_std::task::{spawn};
+use mime_guess::mime::TEXT_PLAIN_UTF_8;
+use tap::{Pipe, prelude, Tap};
+use simdutf8::compat::from_utf8;
 
 #[derive(Debug, EnumString)]
 enum HttpRequestType {
@@ -36,19 +38,33 @@ struct HttpResponse {
     status_text: String,
     headers: Vec<String>,
     content_length: u32,
-    body: String,
+    body: Vec<u8>,
 }
 
 impl HttpResponse {
-    fn to_string(&self) -> String {
-        return format!(
-            "{} {} {}\r\n{}{}\r\n\r\n{}\r\n\r\n",
+    // Writes the HttpResponse into a buffer, ready to be sent off to the client.
+    fn to_data(&self, buf: &mut Vec<u8>) {
+        *buf = format!(
+            "{} {} {}\r\n{}\r\n{}\r\n\r\n{}\r\n\r\n",
             self.version,
             self.status_code,
             self.status_text,
             self.headers.join("\r\n"),
-            self.content_length,
-            self.body
+            "Content-Length: ".to_owned() + &self.content_length.to_string(),
+            unsafe {String::from_utf8_unchecked((*self.body).to_owned())}
+        ).as_bytes().to_vec();
+    }
+
+    // Returns self formatted as an HTTP response, excluding binary data.
+    fn to_string(&self) -> String {
+        return format!(
+            "{} {} {}\r\n{}\r\n{}\r\n\r\n{}\r\n\r\n",
+            self.version,
+            self.status_code,
+            self.status_text,
+            self.headers.join("\r\n"),
+            "Content-Length: ".to_owned() + &self.content_length.to_string(),
+            from_utf8(&*self.body).unwrap_or("Binary data")
         )
     }
 }
@@ -77,23 +93,33 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
             resource: request[1].to_string(),
             version: request[2].to_string()
         }
-    };
+    }.tap_dbg(|x| eprintln!("\nREQUEST:\n{:#?}", x));
 
-    println!("{:#?}", request);
+    // Read file into `body` buffer, and fetch length and MIME type
+    let mut body = vec![];
+    let path = match request.resource.as_str() {
+        "/" => "www/index.html".to_string(),  // Points to the default page
+        _ => "www/".to_owned() + &request.resource
+    }.tap_dbg(|x| eprintln!("Resolved path: {}", x));
+    let length = File::open(&path)?.read_to_end(&mut body).unwrap();
+    let mime = mime_guess::from_path(&path)
+        .first()  // Assume the first MIME guess is right
+        .unwrap_or(TEXT_PLAIN_UTF_8)
+        .tap_dbg(|x| eprintln!("MIME at path: {}", x));
 
-    // Return a basic response. Nothing crazy for now, just making sure it all works.
-    let mut page = String::new();
-    let length = File::open("assets/index.html")?.read_to_string(&mut page)?;
-    println!("{}", page);
-    let response = HttpResponse {
+    // Turn the HttpResponse struct into a valid HTTP response, writing it into `response`
+    let mut response: Vec<u8> = vec![];
+    HttpResponse {
         version: "HTTP/1.1".to_string(),
         status_code: 200,
         status_text: "Success".to_string(),
-        headers: vec!["Content-Type: text/html; charset=UTF-8".to_string()],
+        headers: vec![format!{"Content-Type: {mime}"}],
         content_length: length as u32,
-        body: page
-    };
-    stream_write.write_all(response.to_string().as_bytes())?;
+        body
+    }.tap_dbg(|x| eprintln!("\nRESPONSE:\n{}", x.to_string()))
+     .to_data(&mut response);
+
+    stream_write.write_all(&mut response)?;
 
     Ok(())
 }
