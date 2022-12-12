@@ -40,15 +40,18 @@ struct HttpResponse {
 impl HttpResponse {
     // Writes the HttpResponse into a buffer, ready to be sent off to the client.
     fn to_data(&self, buf: &mut Vec<u8>) {
-        *buf = format!(
-            "{} {} {}\r\n{}\r\n{}\r\n\r\n{}\r\n\r\n",
-            self.version,
-            self.status_code,
-            self.status_text,
-            self.headers.join("\r\n"),
-            "Content-Length: ".to_owned() + &self.content_length.to_string(),
-            unsafe {String::from_utf8_unchecked((*self.body).to_owned())}
-        ).as_bytes().to_vec();
+        *buf = [
+            format!(
+                "{} {} {}\r\n{}\r\n{}\r\n\r\n",
+                self.version,
+                self.status_code,
+                self.status_text,
+                self.headers.join("\r\n"),
+                "Content-Length: ".to_owned() + &self.content_length.to_string(),
+            ).as_bytes(),
+            &*self.body, b"\r\n\r\n"
+        ].concat();
+
     }
 
     // Returns self formatted as an HTTP response, excluding binary data.
