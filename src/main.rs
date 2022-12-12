@@ -1,10 +1,15 @@
-use std::{net::{TcpListener, TcpStream}, io::{Read, Write, BufRead, BufReader, BufWriter}, str::FromStr, fs::File, path, iter};
-use std::path::{Component, PathBuf};
-use strum_macros::{EnumString};
+use std::{
+    net::{TcpListener, TcpStream},
+    io::{Read, Write, BufRead, BufReader, BufWriter},
+    str::FromStr,
+    fs::File,
+    path::{Component, PathBuf},
+};
 use async_std::task::{spawn};
-use mime_guess::mime::TEXT_PLAIN_UTF_8;
+use strum_macros::{EnumString};
 use tap::{Pipe, prelude, Tap};
 use simdutf8::compat::from_utf8;
+use mime_guess::mime::TEXT_PLAIN_UTF_8;
 
 #[derive(Debug, EnumString)]
 enum HttpRequestType {
