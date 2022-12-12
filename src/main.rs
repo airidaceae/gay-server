@@ -1,9 +1,5 @@
-use std::{
-    net::{TcpListener, TcpStream},
-    io::{Read, Write, BufRead, BufReader, BufWriter},
-    str::FromStr,
-    fs::File,
-};
+use std::{net::{TcpListener, TcpStream}, io::{Read, Write, BufRead, BufReader, BufWriter}, str::FromStr, fs::File, path, iter};
+use std::path::{Component, PathBuf};
 use strum_macros::{EnumString};
 use async_std::task::{spawn};
 use mime_guess::mime::TEXT_PLAIN_UTF_8;
@@ -97,10 +93,18 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
 
     // Read file into `body` buffer, and fetch length and MIME type
     let mut body = vec![];
-    let path = match request.resource.as_str() {
-        "/" => "www/index.html".to_string(),  // Points to the default page
-        _ => "www/".to_owned() + &request.resource
-    }.tap_dbg(|x| eprintln!("Resolved path: {}", x));
+    let path =
+        PathBuf::from("www/".to_owned() + &match request.resource.as_str() {
+            "/" => "index.html".to_string(),  // Points to the default page
+            _ => "".to_owned() + &request.resource
+        })
+            // Don't allow path traversal exploits
+            .components()
+            .filter(|&x| x != Component::ParentDir && x != Component::RootDir)
+            .tap_dbg(|x| eprintln!("Iterator structure: {:#?}", x))
+            .collect::<PathBuf>()
+            .tap_dbg(|x| eprintln!("Resolved path: {:?}", x));
+
     let length = File::open(&path)?.read_to_end(&mut body).unwrap();
     let mime = mime_guess::from_path(&path)
         .first()  // Assume the first MIME guess is right
