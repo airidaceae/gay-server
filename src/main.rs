@@ -1,10 +1,6 @@
-use std::{
-    net::{TcpListener, TcpStream},
-    io::{Read, Write, BufRead, BufReader, BufWriter},
-    str::FromStr,
-    fs::File,
-    path::{Component, PathBuf},
-};
+#![feature(is_some_and)]
+
+use std::{net::{TcpListener, TcpStream}, io::{Read, Write, BufRead, BufReader, BufWriter}, str::FromStr, fs::File, path::{Component, PathBuf}, fs};
 use async_std::task::{spawn};
 use strum_macros::{EnumString};
 use tap::{Pipe, prelude, Tap};
@@ -102,8 +98,8 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     let mut body = vec![];
     let path =
         PathBuf::from("www/".to_owned() + &match request.resource.as_str() {
-            "/" => "index.html".to_string(),  // Points to the default page
-            _ => "".to_owned() + &request.resource
+            path if path.ends_with("/") => request.resource + "/" + &"index.html".to_string(),
+            _ => request.resource,
         })
             // Don't allow path traversal exploits
             .components()
@@ -111,7 +107,19 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
             .collect::<PathBuf>()
             .tap_dbg(|x| eprintln!("Resolved path: {:?}", x));
 
-    let length = File::open(&path)?.read_to_end(&mut body).unwrap();
+    // Determine the status code to return. Content-Length is also grabbed here because it's convenient.
+    let (status_code, length) = match (fs::metadata(&path), File::open(&path)) {
+        (Ok(m), Err(_)) if m.is_file() => (404, 0),
+        (Err(_), Err(_)) => (404, 0),
+        (Ok(m), Ok(_))
+            if m.is_dir()
+                && fs::metadata(path.to_str().unwrap().to_owned() + "/index.html")
+                .is_ok_and(|x| x.is_file())
+            => (301, 0),
+        (Ok(_), Ok(mut file)) => (200, file.read_to_end(&mut body)?),
+        _ => (500, 0)
+    };
+
     let mime = mime_guess::from_path(&path)
         .first()  // Assume the first MIME guess is right
         .unwrap_or(TEXT_PLAIN_UTF_8)
@@ -121,7 +129,7 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     let mut response: Vec<u8> = vec![];
     HttpResponse {
         version: "HTTP/1.1".to_string(),
-        status_code: 200,
+        status_code,
         status_text: "Success".to_string(),
         headers: vec![format!{"Content-Type: {mime}"}],
         content_length: length as u32,
