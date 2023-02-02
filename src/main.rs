@@ -1,6 +1,6 @@
 #![feature(is_some_and)]
 
-use std::{net::{TcpListener, TcpStream}, io::{Read, Write, BufRead, BufReader, BufWriter}, str::FromStr, fs::File, path::{Component, PathBuf}, fs};
+use std::{net::{TcpListener, TcpStream, IpAddr, SocketAddr}, io::{Read, Write, BufRead, BufReader, BufWriter}, str::FromStr, fs::File, path::{Component, PathBuf}, fs, fmt::format, env};
 use async_std::task::{spawn};
 use strum_macros::{EnumString};
 use tap::{Pipe, prelude, Tap};
@@ -144,7 +144,8 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
 
 #[async_std::main]
 async fn main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:6969")?;
+    let args: Vec<String> = env::args().collect();
+    let listener = TcpListener::bind(String::from("127.0.0.1:") + args[1].as_str())?;
 
     for stream in listener.incoming() {
         spawn(handle_client(stream?));
