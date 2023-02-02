@@ -1,11 +1,17 @@
 #![feature(is_some_and)]
 
-use std::{net::{TcpListener, TcpStream, IpAddr, SocketAddr}, io::{Read, Write, BufRead, BufReader, BufWriter}, str::FromStr, fs::File, path::{Component, PathBuf}, fs, fmt::format, env};
-use async_std::task::{spawn};
-use strum_macros::{EnumString};
-use tap::{Pipe, prelude, Tap};
-use simdutf8::compat::from_utf8;
+use async_std::task::spawn;
 use mime_guess::mime::TEXT_PLAIN_UTF_8;
+use simdutf8::compat::from_utf8;
+use std::{
+    fs::{self, File},
+    io::{BufRead, BufReader, BufWriter, Read, Write},
+    net::{TcpListener, TcpStream},
+    path::{Component, PathBuf},
+    str::FromStr,
+};
+use strum_macros::EnumString;
+use tap::Tap;
 
 #[derive(Debug, EnumString)]
 enum HttpRequestType {
@@ -18,14 +24,14 @@ enum HttpRequestType {
     OPTIONS,
     CONNECT,
     TRACE,
-    UNKNOWN
+    UNKNOWN,
 }
 
 #[derive(Debug)]
 struct HttpRequest {
     req_type: HttpRequestType,
     resource: String,
-    version: String
+    version: String,
 }
 
 #[derive(Debug)]
@@ -144,7 +150,7 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
 
 #[async_std::main]
 async fn main() -> std::io::Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = std::env::args().collect();
     let listener = TcpListener::bind(String::from("127.0.0.1:") + args[1].as_str())?;
 
     for stream in listener.incoming() {
