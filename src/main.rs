@@ -151,7 +151,7 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
 #[async_std::main]
 async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    let listener = TcpListener::bind(String::from("127.0.0.1:") + args[1].as_str())?;
+    let listener = TcpListener::bind(String::from("0.0.0.0:") + args[1].as_str())?;
 
     for stream in listener.incoming() {
         spawn(handle_client(stream?));
