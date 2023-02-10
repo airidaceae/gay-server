@@ -1,0 +1,8 @@
+**/target
+**/README.md
+**/www
+**/LICENSE
+**/Dockerfile
+**/.gitignore
+**/.git
+
