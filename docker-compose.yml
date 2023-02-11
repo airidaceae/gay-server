@@ -1,0 +1,31 @@
+version: "2.0"
+
+service:
+  gay-server:
+    image: gay-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /media/red-storage/webserver/www/:/app/www:ro
+    ports:
+      - "12345:12345"
+  lilith-server:
+    image: gay-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /media/red-storage/webserver/lilith.www/:/app/www:ro
+    ports:
+      - "1053:12345"
+  iris-server:
+    image: gay-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /media/red-storage/webserver/iris.www/:/app/www:ro
+    ports:
+      - "30747:12345"
+
