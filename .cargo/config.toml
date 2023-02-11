@@ -1,0 +1,6 @@
+[profile.release]
+strip = true  # strip symbols from the binary
+opt-level = "z" # optimize for size
+lto = true # link time optimization
+codegen-units = 1 # decrease parallelization
+
