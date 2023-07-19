@@ -1,5 +1,3 @@
-#![feature(is_some_and)]
-
 use async_std::task::spawn;
 use mime_guess::mime::TEXT_PLAIN_UTF_8;
 use simdutf8::compat::from_utf8;
