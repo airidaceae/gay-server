@@ -9,9 +9,10 @@ use std::{
     net::{TcpListener, TcpStream},
     path::{Component, PathBuf},
     str::FromStr,
+    env,
 };
 use strum_macros::EnumString;
-use tap::Tap;
+use tap::{Tap, Pipe};
 
 #[derive(Debug, EnumString)]
 enum HttpRequestType {
@@ -74,7 +75,7 @@ impl HttpResponse {
     }
 }
 
-async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
+async fn handle_client(stream: TcpStream, cwd: String) -> std::io::Result<()>{
     let mut stream_read = BufReader::new(&stream);
     let mut stream_write = BufWriter::new(&stream);
 
@@ -103,15 +104,17 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     // Read file into `body` buffer, and fetch length and MIME type
     let mut body = vec![];
     let path =
-        PathBuf::from("www/".to_owned() + &match request.resource.as_str() {
+        PathBuf::from(cwd.clone() + &match request.resource.as_str() {
             path if path.ends_with("/") => request.resource + "/" + &"index.html".to_string(),
             _ => request.resource,
         })
             // Don't allow path traversal exploits
-            .components()
-            .filter(|&x| x != Component::ParentDir && x != Component::RootDir)
-            .collect::<PathBuf>()
-            .tap_dbg(|x| eprintln!("Resolved path: {:?}", x));
+            .tap_dbg(|x| eprintln!("\nResolving path:\n    Unprocessed: {:?}", x))
+            .canonicalize()
+            .expect("Canonicalization failed")
+            .tap_dbg(|x| eprintln!("    Canonicalized: {:?}", x))
+            .pipe(|x| if x.starts_with(cwd.clone()) {x} else {PathBuf::new()})
+            .tap_dbg(|x| eprintln!("    Resolved path: {:?}", x));
 
     // Determine the status code to return. Content-Length is also grabbed here because it's convenient.
     let (status_code, length) = match (fs::metadata(&path), File::open(&path)) {
@@ -129,7 +132,7 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
     let mime = mime_guess::from_path(&path)
         .first()  // Assume the first MIME guess is right
         .unwrap_or(TEXT_PLAIN_UTF_8)
-        .tap_dbg(|x| eprintln!("MIME at path: {}", x));
+        .tap_dbg(|x| eprintln!("\nMIME at path: {}", x));
 
     // Turn the HttpResponse struct into a valid HTTP response, writing it into `response`
     let mut response: Vec<u8> = vec![];
@@ -152,9 +155,14 @@ async fn handle_client(stream: TcpStream) -> std::io::Result<()>{
 async fn main() -> std::io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let listener = TcpListener::bind(String::from("0.0.0.0:") + args[1].as_str())?;
+    if let Ok(cwd) = env::var("PWD") {
+        env::set_current_dir(cwd);
+    }
+    let cwd = PathBuf::from(env::current_dir().expect("Failed to get working directory")).into_os_string();
+    let cwd = cwd.to_string_lossy().to_string();
 
     for stream in listener.incoming() {
-        spawn(handle_client(stream?));
+        spawn(handle_client(stream?, cwd.clone()));
     }
     Ok(())
 }
