@@ -1,2 +1,2 @@
 # gay-server
-the web-server for nya.gay
+the first AGPL webserver to be gay
